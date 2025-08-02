@@ -20,8 +20,6 @@ void nextTurn() {
     else if (enPassant != "ff") {enPassant[0] = 'f'; enPassant[1] = 'f';}
 }
 
-
-
 int convertAndVerifyCoords(char *coordinate) {
     return coordinate[0]-'a'+(8*(8-coordinate[1]+'0'));
 }
@@ -72,14 +70,13 @@ void BuildBoard(struct Tile *GameBoard){
     printf("\nType \"res\" as the piece to move to resign:\n");
 }
 
-
 void PrintBoard(struct Tile *GameBoard){
     printf(" a  b  c  d  e  f  g  h ""%s""[ ]"BLACKTILE WHITETEXT"\n", (nextToMove == 'W') ? "\e[31m" : "\e[34m");
-    for (int i =0; i<63; i+=2){ //I am so sorry for the formatting
-        printf("%s""[%s%s%c"WHITETEXT"%s]" "%s[%s%s%c"WHITETEXT"%s]", 
-        GameBoard[i].tileColor, (GameBoard[i].occupied.color == 'W') ? REDTEXT : (GameBoard[i].occupied.color == 'B') ? BLUETEXT : WHITETEXT, GameBoard[i].tileColor, GameBoard[i].occupied.type, GameBoard[i].tileColor,
-        GameBoard[i+1].tileColor, (GameBoard[i+1].occupied.color == 'W') ? REDTEXT : (GameBoard[i+1].occupied.color == 'B') ? BLUETEXT : WHITETEXT, GameBoard[i+1].tileColor, GameBoard[i+1].occupied.type, GameBoard[i+1].tileColor); 
-        if ((i+1)%8 == 7) {
+    for (int i =0; i<64; i++){ //I am so sorry for the formatting
+        printf("%s""[%s%s%c"WHITETEXT"%s]", 
+        GameBoard[i].tileColor, (GameBoard[i].occupied.color == 'W') ? REDTEXT : (GameBoard[i].occupied.color == 'B') ? BLUETEXT : WHITETEXT, 
+        GameBoard[i].tileColor, GameBoard[i].occupied.type, GameBoard[i].tileColor); 
+        if (i%8 == 7) {
             printf(BLACKTILE WHITETEXT" %c \n", '8' - i/8);
         }
     }
