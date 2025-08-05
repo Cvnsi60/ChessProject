@@ -91,7 +91,7 @@ void promotePawn(struct Tile *PawnToPromote){
         PawnToPromote->occupied.type = (char) promotion;
 }
 
-void Move(struct Tile *GameBoard, char *start, char *end){
+int VerifyMove(struct Tile *GameBoard, char *start, char *end){
     
     int startIndex = convertAndVerifyCoords(start);
     int endIndex = convertAndVerifyCoords(end);
@@ -104,64 +104,47 @@ void Move(struct Tile *GameBoard, char *start, char *end){
 
     if (moveTarget->occupied.color == moveDestination->occupied.color || moveTarget->occupied.type == 'U') {
         printf("INVALID MOVE!\n");
-        return;
+        return 0;
     }
     if (moveTarget->occupied.color != nextToMove){
         printf("IT'S NOT YOUR TURN!\n");
-        return;
+        return 0;
     }
     if (moveDestination == moveTarget){
         printf("SELECTIONS CAN'T BE THE SAME!\n");
-        return;
+        return 0;
     }
     switch (moveTarget->occupied.type)
     {
     case 'P':
         int neg = (moveTarget->occupied.color == 'B') ? -1 : 1;
         if (moveDestination->column == moveTarget->column && moveDestination->occupied.type == 'U') {
-            if (moveDestination->row == moveTarget->row + (1*neg)){ //move successful
-                if (moveDestination->occupied.type == 'K') winner = nextToMove;
-                moveTarget->occupied.moved = 'Y';
-                moveDestination->occupied = moveTarget->occupied;
-                moveTarget->occupied = (struct Piece) {'U','U','N'};
+            if (moveDestination->row == moveTarget->row + (1*neg)){ 
+                //move successful
                 if (moveDestination->row == '8' || moveDestination->row == '1') {promotePawn(moveDestination);}
-                nextTurn();
-                return;
+                return 1;
             }
-            if (moveDestination->row == moveTarget->row + (2*neg) && moveTarget->occupied.moved == 'N'){ //move successful
+            if (moveDestination->row == moveTarget->row + (2*neg) && moveTarget->occupied.moved == 'N'){ 
+                //move successful
                 char enPassantRow = start[1] + (1*neg);
                 char enPassantColumn = start[0];
                 enPassant[0] = enPassantColumn; 
                 enPassant[1] = enPassantRow; 
                 enableEnPassant = 'Y';
-                if (moveDestination->occupied.type == 'K') winner = nextToMove;
-                moveTarget->occupied.moved = 'Y';
-                moveDestination->occupied = moveTarget->occupied;
-                moveTarget->occupied = (struct Piece) {'U','U','N'};
                 if (moveDestination->row == '8' || moveDestination->row == '1') {promotePawn(moveDestination);}
-                nextTurn();
-                return;
+                return 1;
             }
         }
-        //pawn attack
         if (((moveDestination->column == moveTarget->column + 1 || moveDestination->column == moveTarget->column - 1) && 
-            moveDestination->row == moveTarget->row + (1*neg)) && (moveDestination->occupied.color != 'U')){ //move successful
-            if (moveDestination->occupied.type == 'K') winner = nextToMove;
-            moveTarget->occupied.moved = 'Y';
-            moveDestination->occupied = moveTarget->occupied;
-            moveTarget->occupied = (struct Piece) {'U','U','N'};
+            moveDestination->row == moveTarget->row + (1*neg)) && (moveDestination->occupied.color != 'U')){ 
+            //pawn attack successful
             if (moveDestination->row == '8' || moveDestination->row == '1') {promotePawn(moveDestination);}
-            nextTurn();
-            return;
+            return 1;
         }
-        //en passant
-        if (((moveDestination->column == moveTarget->column + 1 || moveDestination->column == moveTarget->column - 1) && moveDestination->row == moveTarget->row + (1*neg)) && (end[0] == enPassant[0] && end[1] == enPassant[1])){//en passant successful
-            moveTarget->occupied.moved = 'Y';
-            moveDestination->occupied = moveTarget->occupied;
-            moveTarget->occupied = (struct Piece) {'U','U','N'};
-            GameBoard[endIndex+(8*neg)].occupied = (struct Piece) {'U','U','N'};
-            nextTurn();
-            return;
+        if (((moveDestination->column == moveTarget->column + 1 || moveDestination->column == moveTarget->column - 1) &&
+             moveDestination->row == moveTarget->row + (1*neg)) && (end[0] == enPassant[0] && end[1] == enPassant[1])){
+            //en passant successful
+            return 2;
         }
         break;
 
@@ -170,29 +153,19 @@ void Move(struct Tile *GameBoard, char *start, char *end){
             for (int i = smallerIndex+8; i<largerIndex; i+=8) {
                 if (GameBoard[i].occupied.type != 'U'){
                     printf("PIECE IN THE WAY!\n");
-                    return;
+                    return 0;
                 }
             } //move successful
-            if (moveDestination->occupied.type == 'K') winner = nextToMove;
-            moveTarget->occupied.moved = 'Y';
-            moveDestination->occupied = moveTarget->occupied;
-            moveTarget->occupied = (struct Piece) {'U','U','N'};
-            nextTurn();
-            return; 
+            return 1; 
         }
         if (moveDestination->row == moveTarget->row){
             for (int i = smallerIndex+1; i<largerIndex; i++) {
                 if (GameBoard[i].occupied.type != 'U'){
                     printf("PIECE IN THE WAY!\n");
-                    return;
+                    return 0;
                 }
             } //move successful
-            if (moveDestination->occupied.type == 'K') winner = nextToMove;
-            moveTarget->occupied.moved = 'Y';
-            moveDestination->occupied = moveTarget->occupied;
-            moveTarget->occupied = (struct Piece) {'U','U','N'};
-            nextTurn();
-            return; 
+            return 1; 
         }
         break;
 
@@ -204,13 +177,9 @@ void Move(struct Tile *GameBoard, char *start, char *end){
             (moveDestination->column == moveTarget->column + 2 && moveDestination->row == moveTarget->row + 1) || 
             (moveDestination->column == moveTarget->column - 2 && moveDestination->row == moveTarget->row + 1) || 
             (moveDestination->column == moveTarget->column + 2 && moveDestination->row == moveTarget->row - 1) || 
-            (moveDestination->column == moveTarget->column - 2 && moveDestination->row == moveTarget->row - 1) ){ //move successful
-            if (moveDestination->occupied.type == 'K') winner = nextToMove;
-            moveTarget->occupied.moved = 'Y';
-            moveDestination->occupied = moveTarget->occupied;
-            moveTarget->occupied = (struct Piece) {'U','U','N'};
-            nextTurn();
-            return;
+            (moveDestination->column == moveTarget->column - 2 && moveDestination->row == moveTarget->row - 1) ){ 
+            //move successful
+            return 1;
         }
         break;
 
@@ -219,29 +188,19 @@ void Move(struct Tile *GameBoard, char *start, char *end){
             for (int i = smallerIndex+9; i<largerIndex; i+=9) {
                 if (GameBoard[i].occupied.type != 'U'){
                     printf("PIECE IN THE WAY!\n");
-                    return;
+                    return 0;
                 }
             } //move successful
-            if (moveDestination->occupied.type == 'K') winner = nextToMove;
-            moveTarget->occupied.moved = 'Y';
-            moveDestination->occupied = moveTarget->occupied;
-            moveTarget->occupied = (struct Piece) {'U','U','N'};
-            nextTurn();
-            return; 
+            return 1; 
         }
         if ((largerIndex-smallerIndex)%7 == 0){
             for (int i = smallerIndex+7; i<largerIndex; i+=7) {
                 if (GameBoard[i].occupied.type != 'U'){
                     printf("PIECE IN THE WAY!\n");
-                    return;
+                    return 0;
                 }
             } //move successful
-            if (moveDestination->occupied.type == 'K') winner = nextToMove;
-            moveTarget->occupied.moved = 'Y';
-            moveDestination->occupied = moveTarget->occupied;
-            moveTarget->occupied = (struct Piece) {'U','U','N'};
-            nextTurn();
-            return; 
+            return 1; 
         }
         break;
     
@@ -250,77 +209,86 @@ void Move(struct Tile *GameBoard, char *start, char *end){
             for (int i = smallerIndex+9; i<largerIndex; i+=9) {
                 if (GameBoard[i].occupied.type != 'U'){
                     printf("PIECE IN THE WAY!\n");
-                    return;
+                    return 0;
                 }
             } //move successful
-            if (moveDestination->occupied.type == 'K') winner = nextToMove;
-            moveTarget->occupied.moved = 'Y';
-            moveDestination->occupied = moveTarget->occupied;
-            moveTarget->occupied = (struct Piece) {'U','U','N'};
-            nextTurn();
-            return; 
+            return 1; 
         }
         if ((largerIndex-smallerIndex)%7 == 0){
             for (int i = smallerIndex+7; i<largerIndex; i+=7) {
                 if (GameBoard[i].occupied.type != 'U'){
                     printf("PIECE IN THE WAY!\n");
-                    return;
+                    return 0;
                 }
             } //move successful
-            if (moveDestination->occupied.type == 'K') winner = nextToMove;
-            moveTarget->occupied.moved = 'Y';
-            moveDestination->occupied = moveTarget->occupied;
-            moveTarget->occupied = (struct Piece) {'U','U','N'};
-            nextTurn();
-            return; 
+            return 1; 
         }//R code
         if (moveDestination->column == moveTarget->column){
             for (int i = smallerIndex+8; i<largerIndex; i+=8) {
                 if (GameBoard[i].occupied.type != 'U'){
                     printf("PIECE IN THE WAY!\n");
-                    return;
+                    return 0;
                 }
             } //move successful
-            if (moveDestination->occupied.type == 'K') winner = nextToMove;
-            moveTarget->occupied.moved = 'Y';
-            moveDestination->occupied = moveTarget->occupied;
-            moveTarget->occupied = (struct Piece) {'U','U','N'};
-            nextTurn();
-            return; 
+            return 1; 
         }
         if (moveDestination->row == moveTarget->row){
             for (int i = smallerIndex+1; i<largerIndex; i++) {
                 if (GameBoard[i].occupied.type != 'U'){
                     printf("PIECE IN THE WAY!\n");
-                    return;
+                    return 0;
                 }
             } //move successful
-            if (moveDestination->occupied.type == 'K') winner = nextToMove;
-            moveTarget->occupied.moved = 'Y';
-            moveDestination->occupied = moveTarget->occupied;
-            moveTarget->occupied = (struct Piece) {'U','U','N'};
-            nextTurn();
-            return; 
+            return 1; 
         }
         break;
 
     case 'K':
         //add threatening fuction and restrict king movement
         if (largerIndex - smallerIndex == 1 || largerIndex - smallerIndex == 7 || 
-            largerIndex - smallerIndex == 8 || largerIndex - smallerIndex == 9){//move successful
-            if (moveDestination->occupied.type == 'K') winner = nextToMove;
-            moveTarget->occupied.moved = 'Y';
-            moveDestination->occupied = moveTarget->occupied;
-            moveTarget->occupied = (struct Piece) {'U','U','N'};
-            nextTurn();
-            return; 
+            largerIndex - smallerIndex == 8 || largerIndex - smallerIndex == 9){
+            //move successful
+            return 1; 
         }
         //add castling here
         break;
-    default: printf("INVALID MOVE!\n");
+    default: printf("SOMEHOW YOU GOT THIS TEXT!\n");
+        return 0;
         break;
     }
     printf("THAT PIECE CAN'T MOVE THERE!\n");
+    return 0;
+}
+
+void Move(struct Tile *GameBoard, char *start, char *end){
+    int startIndex = convertAndVerifyCoords(start);
+    int endIndex = convertAndVerifyCoords(end);
+
+    struct Tile *moveTarget = &GameBoard[startIndex];
+    struct Tile *moveDestination = &GameBoard[endIndex];
+
+    int neg = (moveTarget->occupied.color == 'B') ? -1 : 1;
+
+    switch (VerifyMove(GameBoard, start, end))
+    {
+    case 1:
+        if (moveDestination->occupied.type == 'K') winner = nextToMove;
+        moveTarget->occupied.moved = 'Y';
+        moveDestination->occupied = moveTarget->occupied;
+        moveTarget->occupied = (struct Piece) {'U','U','N'};
+        nextTurn();
+        break;
+    case 2:
+        moveTarget->occupied.moved = 'Y';
+        moveDestination->occupied = moveTarget->occupied;
+        moveTarget->occupied = (struct Piece) {'U','U','N'};
+        GameBoard[endIndex+(8*neg)].occupied = (struct Piece) {'U','U','N'};
+        nextTurn();
+        break;
+    default:
+        break;
+    }
+    return; 
 }
 
 void Turn(struct Tile* GameBoard){
