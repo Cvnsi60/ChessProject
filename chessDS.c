@@ -5,25 +5,10 @@
 int turnPlayer = 1;
 int winner = 0;
 int enPassant = 64;
-int enableEnPassant = 0;
+int enPassantBuffer = 0;
 int threat[32];
 int whiteKingIndex = 60;
 int blackKingIndex = 4;
-
-void nextTurn() {
-    if(turnPlayer == 1) turnPlayer = -1;
-    else turnPlayer = 1;
-    if (enableEnPassant != 0) enableEnPassant = 0;
-    else if (enPassant != 64) {enPassant = 64;}
-}
-
-int convertAndVerifyCoords(char *coordinate) { //might not need
-    if (coordinate[0] < 'a' || coordinate[0] > 'h' || coordinate[1] < '1' || coordinate[1] > '8') {
-        printf("INVALID COORDINATES!\n");
-        return -1; //invalid coordinates
-    }
-    return coordinate[0]-'a'+(8*(8-coordinate[1]+'0'));
-}
 
 struct Tile {
     int pieceColor; //1, 0, -1
@@ -31,8 +16,22 @@ struct Tile {
     int moved; //0, 1
 };
 
-//remove later
+void nextTurn() {
+    if(turnPlayer == 1) turnPlayer = -1;
+    else turnPlayer = 1;
+    if (enPassantBuffer != 0) enPassantBuffer = 0;
+    else if (enPassant != 64) {enPassant = 64;}
+}
 
+int convertAndVerifyCoords(char *coordinate) {
+    if (coordinate[0] < 'a' || coordinate[0] > 'h' || coordinate[1] < '1' || coordinate[1] > '8') {
+        printf("INVALID COORDINATES!\n");
+        return -1; //invalid coordinates
+    }
+    return coordinate[0]-'a'+(8*(8-coordinate[1]+'0'));
+}
+
+//remove later, terminal graphics
 #define BLACKTILE "\e[40m"
 #define WHITETILE "\e[47m"
 #define BLUETEXT "\e[0;34m"
@@ -40,7 +39,7 @@ struct Tile {
 #define WHITETEXT "\e[0;37m"
 
 void PrintBoard(struct Tile *GameBoard){ //prints to terminal
-    printf(" a  b  c  d  e  f  g  h ""%s""[ ]"BLACKTILE WHITETEXT"\n", (turnPlayer == 'W') ? "\e[31m" : "\e[34m");
+    printf(" a  b  c  d  e  f  g  h ""%s""[ ]"BLACKTILE WHITETEXT"\n", (turnPlayer == 1) ? "\e[31m" : "\e[34m");
     for (int i =0; i<64; i++){ //I am so sorry for the formatting
         char *tileColor;
         tileColor = ((i%2) != (i/8)%2) ? BLACKTILE : WHITETILE;
@@ -54,7 +53,7 @@ void PrintBoard(struct Tile *GameBoard){ //prints to terminal
 }
 //end of remove later
 
-void BuildBoard(struct Tile *GameBoard){
+void BuildBoard(struct Tile *GameBoard){ //Board reset and print
     for(int i = 0; i<64; i++) {
         if(i<16){
             GameBoard[i].pieceColor = -1;
@@ -92,10 +91,10 @@ void BuildBoard(struct Tile *GameBoard){
             threat[i] = 64;
         }
     }
-
+    PrintBoard(GameBoard);
 }
 
-void promotePawn(struct Tile *PawnToPromote){
+void promotePawn(struct Tile *PawnToPromote){ //includes important terminal graphics
         int promotion;
         printf("Promote pawn to Q, H, R, or B?");
         promotion = getchar();
@@ -106,17 +105,21 @@ void promotePawn(struct Tile *PawnToPromote){
 
 void setPossibleMove(struct Tile *GameBoard, int attackerIndex, int defenderIndex){ //helper function, dont call
     for(int i = 0; i<32; i++){
-        if (threat[i] == attackerIndex){
+        if (threat[i] == defenderIndex){
             break;
         }
         if (threat[i] == 64){
-            threat[i] = attackerIndex;
+            threat[i] = defenderIndex;
             break;
         }
     }
 }
 
-void possibleMoves(struct Tile *GameBoard, int index){ //checks and sets possible moves for a piece
+void possibleMoves(struct Tile *GameBoard, int index){ //tests and sets possible moves for a piece
+    for (int i = 0; i < 64; i++) { //reset threat array
+        if (threat[i] == 64) break; 
+        threat[i] = 64;
+    }
     switch (GameBoard[index].pieceType)
     {
     case 'U':
@@ -128,11 +131,12 @@ void possibleMoves(struct Tile *GameBoard, int index){ //checks and sets possibl
                 setPossibleMove(GameBoard, index, index-(16*GameBoard[index].pieceColor));
             }    
         }
-        if (GameBoard[index+1-(8*GameBoard[index].pieceColor)].pieceColor == GameBoard[index].pieceColor*(-1) && index % 8 != 0){
+        //pawn attacks
+        if (GameBoard[index+1-(8*GameBoard[index].pieceColor)].pieceColor == GameBoard[index].pieceColor*(-1) && index % 8 != 7){
             setPossibleMove(GameBoard, index, index+1-(8*GameBoard[index].pieceColor));
         }
-        if (GameBoard[index-1-(8*GameBoard[index].pieceColor)].pieceColor == GameBoard[index].pieceColor*(-1) && index % 8 != 7){
-            setPossibleMove(GameBoard, index, index+1-(8*GameBoard[index].pieceColor));
+        if (GameBoard[index-1-(8*GameBoard[index].pieceColor)].pieceColor == GameBoard[index].pieceColor*(-1) && index % 8 != 0){
+            setPossibleMove(GameBoard, index, index-1-(8*GameBoard[index].pieceColor));
         }
         //en passant
         if (enPassant != 64){
@@ -316,68 +320,103 @@ void possibleMoves(struct Tile *GameBoard, int index){ //checks and sets possibl
     }
 }
 
-void possibleMovesAll(struct Tile *GameBoard){ //maybe delete or change to check checker 
+void possibleMovesAll(struct Tile *GameBoard){ //change to testForCheck 
     for (int i = 0; i<64; i++) {
         possibleMoves(GameBoard, i);
     }
 }
 
-int verifyMove(struct Tile *GameBoard, int start, int end){
+void Move(struct Tile *GameBoard, int start, int end){
+    int verifyMove = 0;
     possibleMoves(GameBoard, start);
     for (int i = 0; i<32; i++){
         if (threat[i] == end){
-            if (GameBoard[start].pieceType == 'P' && GameBoard[start].moved == 0 && GameBoard[start-(16*GameBoard[start].pieceColor)].pieceType == 'U'){
-                enableEnPassant = 1;
+            if (GameBoard[start].pieceType == 'P' && GameBoard[start].moved == 0 && 
+                GameBoard[start-(16*GameBoard[start].pieceColor)].pieceType == 'U'){
+                enPassantBuffer = 1;
                 enPassant = start-(8*GameBoard[start].pieceColor);
+                verifyMove = 2;
             } //enable en passant
-            return 1;
+            if (GameBoard[start].pieceType == 'K') {
+                verifyMove = 3;
+            }
+            verifyMove = 1;
         } //move successful
         if (threat[i] == 64){
             break; //no threat found
         }
     }
-    return 0;
-}
-
-void Move(struct Tile *GameBoard, int start, int end){
-    if (verifyMove(GameBoard, start, end) == 0) {
+    verifyMove = 0;
+    switch (verifyMove)
+    {
+    case 0:
         printf("THAT PIECE CAN'T MOVE THERE!\n");
         return; //invalid move
+        break;
+    case 1: //normal move
+        if (end == whiteKingIndex || end == blackKingIndex) winner = turnPlayer;
+        GameBoard[start].moved = 1;
+        GameBoard[end] = GameBoard[start];
+        GameBoard[start] = (struct Tile) {0,'U',0};
+        nextTurn();
+        break;
+    case 2: //en Passant
+        GameBoard[start].moved = 1;
+        GameBoard[end] = GameBoard[start];
+        GameBoard[start] = (struct Tile) {0,'U',0};
+        GameBoard[end + 8*(GameBoard[end].pieceColor)] = (struct Tile) {0,'U',0};
+        nextTurn();
+        break;
+    case 3: //King move
+        if (end == whiteKingIndex || end == blackKingIndex) winner = turnPlayer;
+        GameBoard[start].moved = 1;
+        GameBoard[end] = GameBoard[start];
+        GameBoard[start] = (struct Tile) {0,'U',0};
+        if (GameBoard[end].pieceColor == 1) {whiteKingIndex = end;}
+        else {blackKingIndex = end;}
+        nextTurn();
+        break;
+    default:
+        printf("Not sure what happened?");
+        return;
+        break;
     }
-    if (end == whiteKingIndex || end == blackKingIndex) winner = turnPlayer;
-    GameBoard[start].moved = 'Y';
-    GameBoard[end] = GameBoard[start];
-    GameBoard[start] = (struct Tile) {0,'U',0};
-    nextTurn();
+    return;
 }
 
-void Turn(struct Tile *GameBoard){ //terminal Turn
+void Turn(struct Tile *GameBoard){ //terminal Turn, includes important terminal graphics
     char start[8];
     char end[8];
-    printf("Enter the coordinates of the piece to move:");
-    fgets(start, sizeof(start), stdin);
-    if (start[0] == 'r' && start[1] == 'e' && start[2] == 's') {
-        winner = (turnPlayer == 'W') ? 'B' : 'W'; 
-        return;
-    }
-    printf("Enter the coordinates of the destination tile:");
-    fgets(end, sizeof(end), stdin);
-    int startIndex = convertAndVerifyCoords(start);
-    int endIndex = convertAndVerifyCoords(end);
+    int startIndex;
+    int endIndex;
+    do {
+        printf("Enter the coordinates of the piece to move:");
+        fgets(start, sizeof(start), stdin);
+        if (start[0] == 'r' && start[1] == 'e' && start[2] == 's') {
+            winner = (turnPlayer == 1) ? -1 : 1; 
+            return;
+        }
+        startIndex = convertAndVerifyCoords(start);
+        if (startIndex >=0 && startIndex < 64 && GameBoard[startIndex].pieceColor != turnPlayer) {
+            printf("Wrong Color!\n");
+            startIndex = 64;
+        }
+    } while (startIndex < 0 || startIndex >= 64);
+    possibleMoves(GameBoard, startIndex);
+    do {
+        printf("Enter the coordinates of the destination tile:");
+        fgets(end, sizeof(end), stdin);
+        if (start[0] == 'r' && start[1] == 'e' && start[2] == 's') {
+            winner = (turnPlayer == 1) ? -1 : 1; 
+            return;
+        }
+        endIndex = convertAndVerifyCoords(end);
+    } while (endIndex < 0 || endIndex >= 64);
     Move(GameBoard, startIndex, endIndex);
     PrintBoard(GameBoard);
 }
 
-
-int main(){
-    struct Tile* GameBoard = malloc(64* sizeof *GameBoard);
-    BuildBoard(GameBoard);
-    PrintBoard(GameBoard);
-
-   while (winner == 0) {
-    Turn(GameBoard);
-    }
-
+void displayWinner(){ //terminal graphics
     switch (winner)
     {
     case 1:
@@ -391,6 +430,16 @@ int main(){
         printf("Its Tied!");
         break;
     }
+}
+
+int main() {
+    struct Tile* GameBoard = malloc(64 * sizeof(*GameBoard));
+    BuildBoard(GameBoard);
+
+   while (winner == 0) {
+    Turn(GameBoard);
+    }
+    displayWinner();
 
     printf(BLACKTILE "\e[0;37m");    
     free(GameBoard);
