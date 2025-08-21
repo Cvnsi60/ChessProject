@@ -37,7 +37,7 @@ struct Tile {
     struct Piece occupied;
 };
 
-void BuildBoard(struct Tile *GameBoard){
+void BuildBoard(struct Tile *GameBoard){ //refactor with better syntax
     for(int i = 0; i<64; i++){
         GameBoard[i].column = 'a' + (i % 8);
         GameBoard[i].row = '8' - (i / 8);
@@ -70,7 +70,7 @@ void BuildBoard(struct Tile *GameBoard){
     printf("\nType \"res\" as the piece to move to resign:\n");
 }
 
-void PrintBoard(struct Tile *GameBoard){
+void PrintBoard(struct Tile *GameBoard){ //prints to terminal
     printf(" a  b  c  d  e  f  g  h ""%s""[ ]"BLACKTILE WHITETEXT"\n", (nextToMove == 'W') ? "\e[31m" : "\e[34m");
     for (int i =0; i<64; i++){ //I am so sorry for the formatting
         printf("%s""[%s%s%c"WHITETEXT"%s]", 
