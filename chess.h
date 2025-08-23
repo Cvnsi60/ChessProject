@@ -5,7 +5,6 @@
 
 void nextTurn();
 int convertAndVerifyCoords(char *coordinate);
-void BuildBoard(struct Tile *GameBoard);
 void setPossibleMove(struct Tile *GameBoard, int attackerIndex, int defenderIndex);
 void possibleMoves(struct Tile *GameBoard, int index);
 void testForCheck(struct Tile *GameBoard);

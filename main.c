@@ -1,6 +1,8 @@
 #include "global.h"
 #include "chess.h"
+//include only one of the graphics headers
 #include "terminalGraphics.h"
+// #include "DSGraphics.h"
 
 //1 for white, -1 for black, 0 for neither
 int turnPlayer = 1;

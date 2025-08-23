@@ -23,4 +23,4 @@ main.o: main.c
 	gcc -c main.c
 
 clean:
-	rm chess.o terminalGraphics.o main.o chessTerminal.exe chessDS.exe
+	rm chess.o terminalGraphics.o DSGraphics.o main.o chessTerminal.exe chessDS.exe
